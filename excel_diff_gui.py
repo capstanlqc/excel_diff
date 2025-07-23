@@ -152,6 +152,14 @@ class DiffApp(tk.Tk):
         self.last_output_dir = tk.StringVar(value=home)
         self.output_path = tk.StringVar(value=os.path.join(home, "diff_report.html"))
 
+        # Try to add an icon
+        png_file_name = "icon.png"
+        script_dir = os.path.dirname(os.path.realpath(__file__))
+        png_path = os.path.join(script_dir, "icons", png_file_name)
+        if os.path.exists(png_path):
+            icon = tk.PhotoImage(file=png_path)
+            self.iconphoto(True, icon)
+
         self.create_widgets()
 
     def exit_app(self):

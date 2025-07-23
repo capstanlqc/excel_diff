@@ -17,7 +17,7 @@ python excel_diff.py [-h] --original ORIGINAL --modified MODIFIED --wspattern WS
 | Mandatory arguments | Explanation |
 |---------------------|-------------|
 | `--original` PATH   | Path to original file or directory |
-| `--modified` PASS   | Path to modified file or directory |
+| `--modified` PATH   | Path to modified file or directory |
 | `--wspattern` PATTERN | Regex pattern to match worksheet names |
 | `--source` LETTER   | Source text column (e.g., B) |
 | `--target` LETTER   | Target text column (e.g., C) |

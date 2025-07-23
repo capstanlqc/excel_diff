@@ -36,7 +36,8 @@ python excel_diff.py [-h] --original ORIGINAL --modified MODIFIED --wspattern WS
 python excel_diff_gui.py
 ```
 All of the above options can be set in a simple GUI.
-<img width="646" height="463" alt="image" src="https://github.com/user-attachments/assets/951cf92d-cc43-4be6-97aa-5a65464df7e8" />
+<img width="759" height="574" alt="image" src="https://github.com/user-attachments/assets/12cd6168-5fbb-4908-a433-804d33e20473" />
+
 
 ## Standalone GUI executable
 The GUI version can be built into a platform-specific executable that can be run without installing Python or dependencies.

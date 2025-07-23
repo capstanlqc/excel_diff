@@ -54,3 +54,5 @@ pyinstaller ExcelDiffGuiWin.spec
 ```bash
 python -m PyInstaller ExcelDiffGuiMac.spec
 ```
+
+To download Windows and macOS versions, see the [Releases](https://github.com/capstanlqc/excel_diff/releases) section.

@@ -35,6 +35,8 @@ SHOW_GROUP_TITLES = False      # True: show titles; False: hide titles (independ
 GROUP_PAD_Y = 8
 GROUP_INNER_PAD = dict(padx=0, pady=(0, 8))
 LABEL_WIDTH = 28
+if os.name == "nt":
+    LABEL_WIDTH = 40  # slightly wider for Windows default fonts
 PATH_ENTRY_WIDTH = 72      # unified width for file/pattern/extra header fields
 SMALL_ENTRY_WIDTH = 10     # unified width for letter and numeric controls
 BUTTON_PADX = 10           # base left padding for buttons
@@ -156,12 +158,27 @@ def L(key, default_text):
 
 # ---------- GUI ----------
 
+if os.name == "nt":
+    try:
+        # Make process DPI-aware on Windows so fonts and geometry scale correctly
+        from ctypes import windll
+        windll.shcore.SetProcessDpiAwareness(2)  # 2=Per-Monitor DPI awareness if available; fallback is okay
+    except Exception:
+        try:
+            from ctypes import windll
+            windll.shcore.SetProcessDpiAwareness(1)  # system DPI as fallback
+        except Exception:
+            pass
+
 class ExcelDiffGUI(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title(L("app_title", "Excel Diff"))
         # Start reasonably sized; will be adjusted with geometry("") after layout
-        self.geometry("940x760")
+        if os.name == "nt":
+            self.geometry("980x780")
+        else:
+            self.geometry("940x760")
 
         # Window/app icon (from ./icons/icon.png)
         try:

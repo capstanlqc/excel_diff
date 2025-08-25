@@ -4,6 +4,8 @@ import locale
 import os
 import subprocess
 import sys
+import threading
+import threading
 import tkinter as tk
 
 from pathlib import Path
@@ -675,12 +677,55 @@ class ExcelDiffGUI(tk.Tk):
         if not data:
             return
         args, out_html = data
+    
+        # Build CLI args for excel_diff.py (strip the interpreter/script)
+        # Current args are like: [sys.executable, EXCEL_DIFF_SCRIPT, --flag, value, ...]
+        # Keep only flags for argparse in excel_diff.main()
+        cli_args = args[:]
         try:
-            completed = subprocess.run(args, check=False)
+            first_flag_idx = next(
+                i for i, a in enumerate(cli_args)
+                if a.startswith("--") or a in ("--dir", "--nocap")
+            )
+            script_argv = cli_args[first_flag_idx:]
+        except StopIteration:
+            script_argv = []
+    
+        try:
+            if getattr(sys, "frozen", False):
+                # In a frozen build, run excel_diff.main() in-process to avoid re-spawning the GUI exe.
+                def worker():
+                    ok = False
+                    try:
+                        import excel_diff as _excel_diff
+                        old_argv = sys.argv
+                        try:
+                            sys.argv = ["excel_diff.py"] + script_argv
+                            _excel_diff.main()
+                            ok = True
+                        except SystemExit as e:
+                            try:
+                                ok = (int(getattr(e, "code", 0)) == 0)
+                            except Exception:
+                                ok = False
+                        finally:
+                            sys.argv = old_argv
+                    except Exception:
+                        ok = False
+                    # Marshal UI updates back to the main thread
+                    self.after(0, lambda: self._after_diff(ok, out_html))
+                threading.Thread(target=worker, daemon=True).start()
+            else:
+                # Source/dev run: use the system Python interpreter to invoke the helper script
+                completed = subprocess.run(args, check=False)
+                ok = (completed.returncode == 0)
+                self._after_diff(ok, out_html)
         except Exception:
             self._set_status(L("err_run", "Failed to run the diff script."), error=True)
             return
-        if completed.returncode != 0:
+    
+    def _after_diff(self, ok, out_html):
+        if not ok:
             self._set_status(L("err_run_rc", "The diff script returned a non-zero status."), error=True)
             return
         self._set_status(L("done_status", "Diff finished successfully."), error=False)

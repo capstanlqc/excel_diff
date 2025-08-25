@@ -1,0 +1,39 @@
+{
+  "CLI_DESC": "Compare Excel files or folders and render an HTML diff report.",
+  "ARG_HELP_ORIGINAL": "Path to original file or directory (with --dir)",
+  "ARG_HELP_MODIFIED": "Path to modified file or directory (with --dir)",
+  "ARG_HELP_OUTPUT": "Path to output HTML file",
+  "ARG_HELP_SOURCE": "Column letter for source",
+  "ARG_HELP_TARGET": "Column letter for target",
+  "ARG_HELP_EXTRA_COL": "Column letter for optional extra text",
+  "ARG_HELP_EXTRA_HEADER": "Header for the extra column in the HTML",
+  "ARG_DEF_EXTRA_HEADER": "Extra column",
+  "ARG_HELP_ROW_OFFSET": "Header row offset (rows to skip)",
+  "ARG_HELP_REALIGN": "Realign search window (rows)",
+  "ARG_HELP_TOLERATE": "Similarity tolerance (%)",
+  "ARG_HELP_NOCAP": "Remove caps on realign/tolerance",
+  "ARG_HELP_DIR": "Treat --original and --modified as directories",
+  "ARG_HELP_WSPATTERN": "Regex applied to filenames only (not full paths)",
+  "ARG_HELP_OMIT_IDENTICAL": "Omit rows where targets are identical (100% similarity)",
+
+  "ERR_ORIG_DIR": "--original must be an existing directory when --dir is used: ",
+  "ERR_MOD_DIR": "--modified must be an existing directory when --dir is used: ",
+  "ERR_ORIG_FILE": "--original must be an existing file when --dir is NOT used: ",
+  "ERR_MOD_FILE": "--modified must be an existing file when --dir is NOT used: ",
+
+  "TOC_TITLE": "Table of Content",
+  "HDR_LINE": "Line",
+  "HDR_SOURCE": "Source",
+  "HDR_ORIG_TGT": "Original target",
+  "HDR_MOD_TGT": "Modified target",
+  "HDR_TGT_WORD_DIFF": "Target diff by word",
+  "HDR_TGT_CHAR_DIFF": "Target diff by character",
+  "HDR_TGT_SIM": "Target similarity",
+
+  "WORD_DIFF": "Word diff:",
+  "CHAR_DIFF": "Char diff:",
+
+  "STYLE": "<style>\n  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }\n  /* Use fixed layout so column widths from colgroup are honored */\n  table { width: 100%; border-collapse: collapse; margin: 12px 0; table-layout: fixed; }\n  th, td { border: 1px solid #ccc; padding: 6px 8px; vertical-align: middle; }\n  /* All headers: center horizontally and middle vertically */\n  th { background: #a6a6a6; text-align: center; vertical-align: middle; }\n  td, th { white-space: pre-wrap; }\n\n  /* Fixed-width columns via colgroup */\n  col.line-col { width: 4em; }\n  col.sim-col  { width: 5.5em; }\n\n  /* Body cells for numeric columns: right + middle */\n  td.line-col { text-align: right; vertical-align: middle; }\n  td.sim-col  { text-align: right; vertical-align: middle; }\n\n  .src-diff { border: 1px solid #c9c9c9; background: #fafafa; padding: 6px; margin-top: 6px; }\n  .toc ul { margin: 0 0 6px 18px; padding: 0; }\n  .toc a { text-decoration: none; }\n  hr { border: none; border-top: 1px solid #888; }\n\n  /* Zebra striping: apply only when table has class 'zebra' and only to tbody rows */\n  table.zebra tbody tr:nth-child(odd) td { background-color: #ffffff; }\n  table.zebra tbody tr:nth-child(even) td { background-color: #efefef; }\n</style>"
+
+
+}

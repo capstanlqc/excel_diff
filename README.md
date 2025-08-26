@@ -32,7 +32,7 @@ python excel_diff.py [-h] --original ORIGINAL --modified MODIFIED --output OUTPU
 | `--extra_header` STRING       | Extra column header in the HTML report |
 | `--realign` INTEGER           | Search for matching source text the specified numbers of rows above and below the current row |
 | `--tolerate` INTEGER          | Accept source text up to the specified number (%) different from the current source |
-| `--nocap`                     | Removes caps from `realign` (`15`) and `tolerate` (35). Without it any value higher than cap is lowered to cap |
+| `--nocap`                     | Removes caps from `realign` (`15`) and `tolerate` (`35`)<br>Without it any value higher than cap is lowered to cap |
 | `--omit_identical`            | Do not include misaligned rows or rows with changed source but with identical target |
 | `-h` \| `--help`              | Show help and exit |
 

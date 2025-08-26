@@ -203,7 +203,7 @@ class ExcelDiffGUI(tk.Tk):
         self.start_dirs = {"original": self.home, "modified": self.home, "output": self.home}
 
         # State variables
-        self.var_compare_folders = tk.BooleanVar(value=False)
+        self.var_compare_folders = tk.BooleanVar(value=True)
         self.var_original = tk.StringVar(value=str(self.home))
         self.var_modified = tk.StringVar(value=str(self.home))
         self.var_wspattern = tk.StringVar(value=".*")

@@ -43,8 +43,7 @@ python excel_diff_gui.py
 ```
 GUI version depends on the console version.
 All of the above options can be set in a simple GUI.
-<img width="759" height="574" alt="image" src="https://github.com/user-attachments/assets/12faa7cd-3aa6-4121-a2be-9bcfeeba59e6" />
-
+<img width="833" height="739" alt="image" src="https://github.com/user-attachments/assets/b82534da-6704-43a0-9c26-013509257936" />
 
 ## Standalone GUI executable
 The GUI version can be built into a platform-specific executable that can be run without installing Python or dependencies.

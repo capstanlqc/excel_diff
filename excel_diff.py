@@ -218,123 +218,86 @@ def compare_sheets(orig_rows, mod_rows, source_idx, target_idx,
     def get(row, idx):
         if row is None or idx is None:
             return None
-        if 0 <= idx < len(row):
-            v = row[idx]
-            return v.strip() if isinstance(v, str) else (str(v).strip() if v is not None else "")
-        return ""
-
-    def _should_emit_pair(oi, mi, o_src, m_src, o_tgt, m_tgt):
-        # Always emit when targets differ (<100% similarity)
-        if (o_tgt or "") != (m_tgt or ""):
-            return True
-        # Targets are identical: emit only if line numbers differ, or sources differ
-        if (oi is not None and mi is not None and oi != mi):
-            return True
-        if (o_src or "") != (m_src or ""):
-            return True
-        return False
+        if idx < len(row):
+            return row[idx]
+        return None
 
     def _emit_pair(oi, mi, o_src, m_src, o_tgt, m_tgt, o_extra, m_extra):
-        # If omitting identical, drop only true pairs (both sides present) whose targets are 100% similar
-        if omit_identical and oi is not None and mi is not None:
-            if int(round(similarity(o_tgt or "", m_tgt or ""))) == 100:
+        # Skip rows that are completely empty (no source and no target)
+        if not (o_src or o_tgt or m_src or m_tgt):
+            return
+
+        tgt_identical = int(round(similarity(o_tgt or "", m_tgt or ""))) == 100
+        src_identical = (o_src or "") == (m_src or "")
+        idx_identical = (oi == mi)
+
+        if omit_identical:
+            # Strict: omit any identical targets
+            if tgt_identical:
                 return
+        else:
+            # When omit_identical is False:
+            # omit rows where target, index, and source are ALL identical
+            if tgt_identical and idx_identical and src_identical:
+                return
+
         results.append((oi, mi, o_src, m_src, o_tgt, m_tgt, o_extra, m_extra))
 
-    for oi in range(row_offset, max_orig):
+    # main comparison loop
+    for oi in range(max_orig):
         if oi in processed_orig:
             continue
-        o_src = get(orig_rows[oi], source_idx)
-        o_tgt = get(orig_rows[oi], target_idx)
-        o_extra = get(orig_rows[oi], extra_idx) if extra_idx is not None else None
-        # Skip empty source rows entirely
-        if not (o_src or "").strip():
-            continue
+        o_row = orig_rows[oi]
+        o_src = get(o_row, source_idx)
+        o_tgt = get(o_row, target_idx)
+        o_extra = get(o_row, extra_idx)
 
-        # Helper to finalize a found match
-        def pair_with(mi):
-            m_src = get(mod_rows[mi], source_idx)
-            m_tgt = get(mod_rows[mi], target_idx)
-            m_extra = get(mod_rows[mi], extra_idx) if extra_idx is not None else None
-            # Only append if the row should be shown per the rules
-            if _should_emit_pair(oi+1, mi+1, o_src, m_src, o_tgt, m_tgt):
-                _emit_pair(oi+1, mi+1, o_src, m_src, o_tgt, m_tgt, o_extra, m_extra)
-            # Mark both as processed regardless of whether we emitted
+        best_mi = None
+        best_score = -1
+        for mi in range(max_mod):
+            if mi in processed_mod:
+                continue
+            m_row = mod_rows[mi]
+            m_src = get(m_row, source_idx)
+            m_tgt = get(m_row, target_idx)
+            score = 0
+            if (o_src or "") == (m_src or ""):
+                score += 1
+            if (o_tgt or "") == (m_tgt or ""):
+                score += 1
+            if score > best_score:
+                best_score = score
+                best_mi = mi
+        if best_mi is not None:
             processed_orig.add(oi)
-            processed_mod.add(mi)
+            processed_mod.add(best_mi)
+            m_row = mod_rows[best_mi]
+            m_src = get(m_row, source_idx)
+            m_tgt = get(m_row, target_idx)
+            m_extra = get(m_row, extra_idx)
+            _emit_pair(oi + row_offset, best_mi + row_offset,
+                       o_src, m_src, o_tgt, m_tgt, o_extra, m_extra)
 
-        # 1) Same-row attempt (always try first)
-        mi = oi if oi < max_mod else None
-        if mi is not None and mi >= row_offset and mi not in processed_mod:
-            m_src_same = get(mod_rows[mi], source_idx)
-            if o_src == m_src_same:
-                pair_with(mi)
-                continue
-            # If realign == 0, allow only same-row fuzzy (do not search other rows)
-            if realign == 0 and tolerate > 0:
-                sim = similarity(o_src or "", m_src_same or "")
-                if sim >= 100 - tolerate:
-                    pair_with(mi)
-                    continue
-
-        # 2) Realign window search (only if realign > 0)
-        found = False
-        if realign > 0:
-            for delta in range(-realign, realign+1):
-                mi2 = oi + delta
-                if mi2 < row_offset or mi2 >= max_mod or mi2 in processed_mod:
-                    continue
-                m_src = get(mod_rows[mi2], source_idx)
-                if not (m_src or "").strip():
-                    continue
-                if tolerate == 0:
-                    # Exact match only within the window
-                    if o_src == m_src:
-                        pair_with(mi2)
-                        found = True
-                        break
-                else:
-                    # Fuzzy match within the window
-                    sim = similarity(o_src or "", m_src or "")
-                    if sim >= 100 - tolerate:
-                        pair_with(mi2)
-                        found = True
-                        break
-            if found:
-                continue
-
-        # 3) No match -> deletion (insertions handled after)
-        results.append((oi+1, None, o_src, None, o_tgt, None, o_extra, None))
-        processed_orig.add(oi)
-
-    # 4) Remaining insertions
-    for mi in range(row_offset, max_mod):
+    # handle leftovers in modified rows
+    for mi in range(max_mod):
         if mi in processed_mod:
             continue
-        m_src = get(mod_rows[mi], source_idx)
-        if not (m_src or "").strip():
+        m_row = mod_rows[mi]
+        m_src = get(m_row, source_idx)
+        m_tgt = get(m_row, target_idx)
+        m_extra = get(m_row, extra_idx)
+        _emit_pair(None, mi + row_offset, None, m_src, None, m_tgt, None, m_extra)
+
+    # handle leftovers in original rows
+    for oi in range(max_orig):
+        if oi in processed_orig:
             continue
-        m_tgt = get(mod_rows[mi], target_idx)
-        m_extra = get(mod_rows[mi], extra_idx) if extra_idx is not None else None
-        results.append((None, mi+1, None, m_src, None, m_tgt, None, m_extra))
+        o_row = orig_rows[oi]
+        o_src = get(o_row, source_idx)
+        o_tgt = get(o_row, target_idx)
+        o_extra = get(o_row, extra_idx)
+        _emit_pair(oi + row_offset, None, o_src, None, o_tgt, None, o_extra, None)
 
-    # sort: keep <100% similarity rows before 100%, then group by original line,
-    # and order orig-only ("N/") before both ("N/M") before mod-only ("/N").
-    def sort_key(r):
-        oi, mi = r[0], r[1]
-        sim_int = int(round(similarity(r[4] or "", r[5] or "")))
-        if oi is not None and mi is None:
-            row_type = 0  # "N/"
-        elif oi is not None and mi is not None:
-            row_type = 1  # "N/M"
-        else:
-            row_type = 2  # "/N"
-        group_num = oi if oi is not None else (mi if mi is not None else 10**12)
-        oi_key = oi if oi is not None else 10**12
-        mi_key = mi if mi is not None else 10**12
-        return (sim_int == 100, group_num, row_type, oi_key, mi_key)
-
-    results.sort(key=sort_key)
     return results
 
 # ---------------- HTML Rendering ---------------- #

@@ -328,13 +328,13 @@ class ExcelDiffGUI(tk.Tk):
         row += 1
     
         # Source column (letter)
-        self._right_label(grp1, L("source_col", "Source column (letter)")).grid(row=row, column=0, sticky="e", **GROUP_INNER_PAD)
+        self._right_label(grp1, L("source_col", "Source column (e.g., A)")).grid(row=row, column=0, sticky="e", **GROUP_INNER_PAD)
         self.ent_source = ttk.Entry(grp1, textvariable=self.var_source_col, width=SMALL_ENTRY_WIDTH)
         self.ent_source.grid(row=row, column=1, sticky="w", **GROUP_INNER_PAD)
         row += 1
     
         # Target column (letter)
-        self._right_label(grp1, L("target_col", "Target column (letter)")).grid(row=row, column=0, sticky="e", **GROUP_INNER_PAD)
+        self._right_label(grp1, L("target_col", "Target column (e.g., B)")).grid(row=row, column=0, sticky="e", **GROUP_INNER_PAD)
         self.ent_target = ttk.Entry(grp1, textvariable=self.var_target_col, width=SMALL_ENTRY_WIDTH)
         self.ent_target.grid(row=row, column=1, sticky="w", **GROUP_INNER_PAD)
         row += 1
@@ -353,13 +353,13 @@ class ExcelDiffGUI(tk.Tk):
         row2 += 1
     
         # Similarity tolerance (%)
-        self._right_label(grp2, L("tolerate", "Similarity tolerance (%)")).grid(row=row2, column=0, sticky="e", **GROUP_INNER_PAD)
+        self._right_label(grp2, L("tolerate", "Source difference threshold (%)")).grid(row=row2, column=0, sticky="e", **GROUP_INNER_PAD)
         self.spn_tolerate = ttk.Spinbox(grp2, from_=0, to=35, textvariable=self.var_tolerate, width=SMALL_ENTRY_WIDTH)
         self.spn_tolerate.grid(row=row2, column=1, sticky="w", **GROUP_INNER_PAD)
         row2 += 1
     
         # Realign search window (rows)
-        self._right_label(grp2, L("realign", "Realign search window (rows)")).grid(row=row2, column=0, sticky="e", **GROUP_INNER_PAD)
+        self._right_label(grp2, L("realign", "Number of other rows to search")).grid(row=row2, column=0, sticky="e", **GROUP_INNER_PAD)
         self.spn_realign = ttk.Spinbox(grp2, from_=0, to=15, textvariable=self.var_realign, width=SMALL_ENTRY_WIDTH)
         self.spn_realign.grid(row=row2, column=1, sticky="w", **GROUP_INNER_PAD)
         row2 += 1
@@ -367,7 +367,7 @@ class ExcelDiffGUI(tk.Tk):
         # No limits checkbox (same column as inputs)
         self.chk_nolimits = ttk.Checkbutton(
             grp2,
-            text=L("nolimits", "No limits on similarity/realign search"),
+            text=L("nolimits", "No search limits"),
             variable=self.var_nolimits,
             command=self._toggle_limits
         )
@@ -384,7 +384,7 @@ class ExcelDiffGUI(tk.Tk):
         # Include extra (checkbox same column as entries)
         self.chk_extra = ttk.Checkbutton(
             grp3,
-            text=L("extract_extra", "Include text from an additional column"),
+            text=L("extract_extra", "Include data from an extra column"),
             variable=self.var_extract_extra,
             command=self._toggle_extra
         )
@@ -392,13 +392,13 @@ class ExcelDiffGUI(tk.Tk):
         row3 += 1
     
         # Extra column letter
-        self._right_label(grp3, L("extra_col", "Extra column (letter)")).grid(row=row3, column=0, sticky="e", **GROUP_INNER_PAD)
+        self._right_label(grp3, L("extra_col", "Extra column (e.g., C)")).grid(row=row3, column=0, sticky="e", **GROUP_INNER_PAD)
         self.ent_extra_col = ttk.Entry(grp3, textvariable=self.var_extra_col, width=SMALL_ENTRY_WIDTH)
         self.ent_extra_col.grid(row=row3, column=1, sticky="w", **GROUP_INNER_PAD)
         row3 += 1
     
         # Extra column header (keep within column; do not stretch to the right border)
-        self._right_label(grp3, L("extra_header", "Extra column output header")).grid(row=row3, column=0, sticky="e", **GROUP_INNER_PAD)
+        self._right_label(grp3, L("extra_header", "Extra column header")).grid(row=row3, column=0, sticky="e", **GROUP_INNER_PAD)
         self.ent_extra_header = ttk.Entry(grp3, textvariable=self.var_extra_header, width=PATH_ENTRY_WIDTH)
         # Important: do not use sticky="ew" so it doesn't stretch beyond the button column
         self.ent_extra_header.grid(row=row3, column=1, sticky="w", **GROUP_INNER_PAD)
@@ -423,7 +423,7 @@ class ExcelDiffGUI(tk.Tk):
         self.chk_include_identical = ttk.Checkbutton(
             grp4,
             text=L("include_identical_pairs",
-                   "Include rows with no target changes when rows are misaligned or the source changed"),
+                   "Include rows with unchanged target for misaligned rows or rows with changed source"),
             variable=self.var_include_identical_pairs
         )
         self.chk_include_identical.grid(row=row4, column=1, sticky="w", **GROUP_INNER_PAD)
@@ -588,30 +588,30 @@ class ExcelDiffGUI(tk.Tk):
 
         if compare_dirs:
             if not orig.exists() or not orig.is_dir():
-                self._set_status(L("err_orig_dir", "“Original” must be an existing folder."), error=True)
+                self._set_status(L("err_orig_dir", "Please select an existing folder for 'Original'."), error=True)
                 return None
             if not mod.exists() or not mod.is_dir():
-                self._set_status(L("err_mod_dir", "“Modified” must be an existing folder."), error=True)
+                self._set_status(L("err_mod_dir", "Please select an existing folder for 'Modified'."), error=True)
                 return None
         else:
             if not orig.exists() or not orig.is_file():
-                self._set_status(L("err_orig_file", "“Original” must be an existing file."), error=True)
+                self._set_status(L("err_orig_file", "Please select an existing file for 'Original'."), error=True)
                 return None
             if not mod.exists() or not mod.is_file():
-                self._set_status(L("err_mod_file", "“Modified” must be an existing file."), error=True)
+                self._set_status(L("err_mod_file", "Please select an existing file for 'Modified'."), error=True)
                 return None
 
         source = self.var_source_col.get().strip()
         target = self.var_target_col.get().strip()
         if not source or not target:
-            self._set_status(L("err_cols", "Enter both source and target column letters."), error=True)
+            self._set_status(L("err_cols", "Please enter letters for both the source and target columns."), error=True)
             return None
 
         extra_args = []
         if self.var_extract_extra.get():
             extra_col = self.var_extra_col.get().strip()
             if not extra_col:
-                self._set_status(L("err_extra_col", "Extra column is enabled but not set."), error=True)
+                self._set_status(L("err_extra_col", "Please provide a column letter for the enabled extra column."), error=True)
                 return None
             extra_args.extend(["--extra_column", extra_col])
             header = self.var_extra_header.get().strip()
@@ -622,7 +622,7 @@ class ExcelDiffGUI(tk.Tk):
             try:
                 out_html.parent.mkdir(parents=True, exist_ok=True)
             except Exception:
-                self._set_status(L("err_output_dir", "Cannot create the output folder."), error=True)
+                self._set_status(L("err_output_dir", "Could not create the output folder. Please check the path and permissions."), error=True)
                 return None
 
         args = [sys.executable, EXCEL_DIFF_SCRIPT,
@@ -721,15 +721,15 @@ class ExcelDiffGUI(tk.Tk):
                 ok = (completed.returncode == 0)
                 self._after_diff(ok, out_html)
         except Exception:
-            self._set_status(L("err_run", "Failed to run the diff script."), error=True)
+            self._set_status(L("err_run", "An unexpected error occurred while running the comparison."), error=True)
             return
     
     def _after_diff(self, ok, out_html):
         if not ok:
-            self._set_status(L("err_run_rc", "The diff script returned a non-zero status."), error=True)
+            self._set_status(L("err_run_rc", "The comparison process did not complete successfully."), error=True)
             return
-        self._set_status(L("done_status", "Diff finished successfully."), error=False)
-        if messagebox.askyesno(L("done_title", "Done"), L("open_now", "Open the HTML report now?")):
+        self._set_status(L("done_status", "Comparison finished successfully."), error=False)
+        if messagebox.askyesno(L("done_title", "Done"), L("open_now", "The report has been generated. Open it now?")):
             self._open_file(out_html)
 
     def _set_status(self, text, error=False):
@@ -750,7 +750,7 @@ class ExcelDiffGUI(tk.Tk):
             else:
                 subprocess.run(["xdg-open", str(path)])
         except Exception:
-            messagebox.showinfo(L("open_fail_title", "Info"), L("open_fail", "Cannot open the file automatically."))
+            messagebox.showinfo(L("open_fail_title", "Info"), L("open_fail", "Could not open the report automatically."))
 
 #    def _diag_locales(self):
 #        try:

@@ -2,7 +2,7 @@
 A tool to generate diff reports from two Excel files or two directories containing Excel files
 
 ## Dependencies
-This tool depends on `openpyxl` and `xlrd`. Install it by running:
+This tool depends on `openpyxl` and `xlrd`. Install these dependencies by running:
 ```bash
 pip install openpyxl xlrd
 ```

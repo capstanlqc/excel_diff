@@ -13,7 +13,7 @@
   "ARG_HELP_TOLERATE": "Similarity tolerance (%)",
   "ARG_HELP_NOCAP": "Remove caps on realign/tolerance",
   "ARG_HELP_DIR": "Treat --original and --modified as directories",
-  "ARG_HELP_WSPATTERN": "Regex applied to filenames only (not full paths)",
+  "ARG_HELP_WSPATTERN": "Regex applied to worksheet names (tabs)",
   "ARG_HELP_OMIT_IDENTICAL": "Omit rows where targets are identical (100% similarity)",
 
   "ERR_ORIG_DIR": "--original must be an existing directory when --dir is used: ",

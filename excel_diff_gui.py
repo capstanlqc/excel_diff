@@ -133,24 +133,24 @@ def detect_locale_chain():
 
 def load_labels():
     """
-    Merge JSON label files from most preferred to least.
-    Locale file pattern is locales/<locale_tag>_gui.json (e.g., en_GB_gui.json, en_gui.json).
-    Variant (e.g., en_GB_gui.json) overrides base (en_gui.json).
+    Load and merge locale files, from base to variant.
+    This ensures that specific locales (e.g., en_GB) override general ones (e.g., en).
     """
     merged = {}
-    tried = set()
-    for cand in detect_locale_chain():
-        if cand in tried:
-            continue
-        tried.add(cand)
+    # Reverse the chain to load from base to variant (e.g., 'en' then 'en_IE')
+    for cand in reversed(detect_locale_chain()):
         f = LOCALES_DIR / f"{cand}_gui.json"
         if f.exists():
             try:
                 with f.open("r", encoding="utf-8") as fh:
                     data = json.load(fh)
                     merged.update(data)
-            except Exception:
-                continue
+            except json.JSONDecodeError as e:
+                # This will catch malformed JSON and tell you exactly where the error is.
+                print(f"Error: Could not parse '{f.name}'. It may contain invalid JSON. Details: {e}", file=sys.stderr)
+            except Exception as e:
+                # Catch other potential file reading errors.
+                print(f"Error: Could not read file '{f.name}'. Details: {e}", file=sys.stderr)
     return merged
 
 # Initialize labels and helper BEFORE class definition

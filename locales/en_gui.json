@@ -20,7 +20,7 @@
   "extra_col": "Extra column (letter)",
   "extra_header": "Extra column output header",
   "output_html": "Output HTML file",
-  "include_identical_pairs": "Include rows with no target changes when rows are misaligned or the source changed"
+  "include_identical_pairs": "Include rows with no target changes when rows are misaligned or the source changed",
   "browse": "Browse",
   "run_diff": "Run diff",
   "exit": "Exit",

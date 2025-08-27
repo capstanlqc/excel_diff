@@ -1,6 +1,4 @@
 # -*- mode: python ; coding: utf-8 -*-
-
-
 a = Analysis(
     ['excel_diff_gui.py'],
     pathex=[],
@@ -19,7 +17,6 @@ a = Analysis(
     optimize=0,
 )
 pyz = PYZ(a.pure)
-
 exe = EXE(
     pyz,
     a.scripts,
@@ -40,4 +37,5 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon='icons/icon.ico',
+    version='versioninfo.txt',
 )

@@ -207,7 +207,6 @@ def col_letter_to_index(letter):
     return idx - 1
 
 # ---------------- Comparison logic ---------------- #
-
 def compare_sheets(orig_rows, mod_rows, source_idx, target_idx,
                    extra_idx, row_offset, realign, tolerate,
                    omit_identical=False):
@@ -225,14 +224,13 @@ def compare_sheets(orig_rows, mod_rows, source_idx, target_idx,
         return None
 
     def _emit_pair(oi, mi, o_src, m_src, o_tgt, m_tgt, o_extra, m_extra):
+        # Emit raw 0-based indices; renderer converts to Excel row numbers.
         # Skip rows that are completely empty (no source and no target)
         if not (o_src or o_tgt or m_src or m_tgt):
             return
-
         tgt_identical = int(round(similarity(o_tgt or "", m_tgt or ""))) == 100
         src_identical = (o_src or "") == (m_src or "")
         idx_identical = (oi == mi)
-
         if omit_identical:
             # Strict: omit any identical targets
             if tgt_identical:
@@ -242,34 +240,63 @@ def compare_sheets(orig_rows, mod_rows, source_idx, target_idx,
             # omit rows where target, index, and source are ALL identical
             if tgt_identical and idx_identical and src_identical:
                 return
-
         results.append((oi, mi, o_src, m_src, o_tgt, m_tgt, o_extra, m_extra))
 
-    # main comparison loop
-    for oi in range(max_orig):
-        if oi in processed_orig:
-            continue
+    def _src_similarity(a, b):
+        # similarity() already returns 0..100 using difflib.SequenceMatcher
+        return similarity(a or "", b or "")
+
+    # Find best matching modified-row index for given original-row index
+    def find_best_match_for_oi(oi):
         o_row = orig_rows[oi]
         o_src = get(o_row, source_idx)
-        o_tgt = get(o_row, target_idx)
-        o_extra = get(o_row, extra_idx)
 
         best_mi = None
-        best_score = -1
+        best_score = -1.0
+        threshold = max(0.0, 100.0 - float(tolerate or 0))
+
+        # Pass 1: similarity-based candidates honoring tolerate
         for mi in range(max_mod):
             if mi in processed_mod:
                 continue
             m_row = mod_rows[mi]
             m_src = get(m_row, source_idx)
-            m_tgt = get(m_row, target_idx)
-            score = 0
-            if (o_src or "") == (m_src or ""):
-                score += 1
-            if (o_tgt or "") == (m_tgt or ""):
-                score += 1
-            if score > best_score:
-                best_score = score
-                best_mi = mi
+            sim = _src_similarity(o_src, m_src)
+            if sim >= threshold:
+                score = sim
+                if (o_src or "") == (m_src or ""):
+                    score += 10.0  # strong boost for exact equality
+                if oi == mi:
+                    score += 2.0   # small boost for same index
+                if score > best_score:
+                    best_score = score
+                    best_mi = mi
+
+        # Pass 2: if none passed threshold, exact source match within ±realign window
+        if best_mi is None and realign and realign > 0 and (o_src is not None):
+            for delta in range(1, realign + 1):
+                for mi in (oi - delta, oi + delta):
+                    if mi < 0 or mi >= max_mod or mi in processed_mod:
+                        continue
+                    m_row = mod_rows[mi]
+                    m_src = get(m_row, source_idx)
+                    if (o_src or "") == (m_src or ""):
+                        return mi
+
+        return best_mi
+
+    # Main loop over original rows
+    for oi in range(max_orig):
+        if oi in processed_orig:
+            continue
+
+        o_row = orig_rows[oi]
+        o_src = get(o_row, source_idx)
+        o_tgt = get(o_row, target_idx)
+        o_extra = get(o_row, extra_idx)
+
+        best_mi = find_best_match_for_oi(oi)
+
         if best_mi is not None:
             processed_orig.add(oi)
             processed_mod.add(best_mi)
@@ -277,10 +304,13 @@ def compare_sheets(orig_rows, mod_rows, source_idx, target_idx,
             m_src = get(m_row, source_idx)
             m_tgt = get(m_row, target_idx)
             m_extra = get(m_row, extra_idx)
-            _emit_pair(oi + row_offset, best_mi + row_offset,
-                       o_src, m_src, o_tgt, m_tgt, o_extra, m_extra)
+            # Emit raw 0-based indices; renderer will convert for display
+            _emit_pair(oi, best_mi, o_src, m_src, o_tgt, m_tgt, o_extra, m_extra)
+        else:
+            # No match -> deletion
+            _emit_pair(oi, None, o_src, None, o_tgt, None, o_extra, None)
 
-    # handle leftovers in modified rows
+    # Leftover modified rows -> insertions
     for mi in range(max_mod):
         if mi in processed_mod:
             continue
@@ -288,17 +318,7 @@ def compare_sheets(orig_rows, mod_rows, source_idx, target_idx,
         m_src = get(m_row, source_idx)
         m_tgt = get(m_row, target_idx)
         m_extra = get(m_row, extra_idx)
-        _emit_pair(None, mi + row_offset, None, m_src, None, m_tgt, None, m_extra)
-
-    # handle leftovers in original rows
-    for oi in range(max_orig):
-        if oi in processed_orig:
-            continue
-        o_row = orig_rows[oi]
-        o_src = get(o_row, source_idx)
-        o_tgt = get(o_row, target_idx)
-        o_extra = get(o_row, extra_idx)
-        _emit_pair(oi + row_offset, None, o_src, None, o_tgt, None, o_extra, None)
+        _emit_pair(None, mi, None, m_src, None, m_tgt, None, m_extra)
 
     return results
 
@@ -341,7 +361,7 @@ def _same_or_both_null(a, b):
         return True
     return (a or "") == (b or "")
 
-def render_html(all_results, output_path, extra_header):
+def render_html(all_results, output_path, extra_header, row_offset=0):
     toc = [f"<div class='toc'><h2>{html.escape(T('TOC_TITLE', 'Table of Contents'))}</h2><ul>"]
     body = []
     for file_key, sheets in all_results.items():
@@ -352,10 +372,8 @@ def render_html(all_results, output_path, extra_header):
             sid = f"{anchor_file}_s_{re.sub(r'[^A-Za-z0-9_]+', '_', sheetname)}"
             toc.append(f'<li><a href="#{sid}">{html.escape(sheetname)}</a></li>')
             body.append(f'<h3 id="{sid}">{html.escape(sheetname)}</h3>')
-
             zebra_class = " class='zebra'" if len(rows) >= 3 else ""
             body.append(f'<table{zebra_class}>')
-
             # Fixed-width columns via colgroup (first and last columns)
             if extra_header:
                 # Columns: Line | Extra | Source | Orig | Mod | Word diff | Char diff | Sim
@@ -384,7 +402,6 @@ def render_html(all_results, output_path, extra_header):
                     "<col class='sim-col'>"
                     "</colgroup>"
                 )
-
             headers = [T("HDR_LINE", "Line")]
             if extra_header:
                 headers.append(html.escape(extra_header))
@@ -396,7 +413,6 @@ def render_html(all_results, output_path, extra_header):
                 T("HDR_TGT_CHAR_DIFF", "Target diff by character"),
                 T("HDR_TGT_SIM", "Target similarity"),
             ])
-
             # Add classes to the first and last header cells for clarity
             thead_cells = []
             for idx, h in enumerate(headers):
@@ -407,13 +423,22 @@ def render_html(all_results, output_path, extra_header):
                 else:
                     thead_cells.append(f"<th>{h}</th>")
             body.append("<thead><tr>" + "".join(thead_cells) + "</tr></thead>")
-
             body.append("<tbody>")
+
+            # Convert 0-based internal index to Excel row number once per side
+            def _disp(idx):
+                if idx is None:
+                    return ""
+                return str(idx + row_offset + 1)
+
             for oi, mi, o_src, m_src, o_tgt, m_tgt, o_extra, m_extra in rows:
-                if oi and mi and oi == mi:
-                    line = str(oi)
+                # Build the human-visible Line cell
+                disp_oi = _disp(oi)
+                disp_mi = _disp(mi)
+                if disp_oi and disp_mi and disp_oi == disp_mi:
+                    line = disp_oi
                 else:
-                    line = f"{oi or ''}/{mi or ''}"
+                    line = f"{disp_oi}/{disp_mi}"
 
                 t_sim_int = int(round(similarity(o_tgt or "", m_tgt or "")))
 
@@ -454,11 +479,11 @@ def render_html(all_results, output_path, extra_header):
                     f"<td class='sim-col'>{t_sim_int}%</td>",
                 ])
                 body.append("<tr>" + "".join(row_cells) + "</tr>")
+
             body.append("</tbody>")
             body.append("</table>")
         toc.append("</ul></li>")
     toc.append("</ul></div>")
-
     with Path(output_path).open("w", encoding="utf-8") as f:
         f.write("<html><head><meta charset='utf-8'>")
         f.write(style_css())
@@ -489,9 +514,9 @@ def main():
 
     cap_realign = None if args.nocap else 15
     cap_tolerate = 100 if args.nocap else 35
-
     realign = safe_int(args.realign, cap_realign)
     tolerate = safe_int(args.tolerate, cap_tolerate)
+
     source_idx = col_letter_to_index(args.source)
     target_idx = col_letter_to_index(args.target)
     extra_idx = col_letter_to_index(args.extra_column) if args.extra_column else None
@@ -549,9 +574,14 @@ def main():
             if ws_pat is not None:
                 all_sheets = {sh for sh in all_sheets if ws_pat.search(sh)}
             for sh in sorted(all_sheets):
+                # Strictly enforce row-offset by slicing before comparison
+                o_rows_all = sheets_o.get(sh, [])
+                m_rows_all = sheets_m.get(sh, [])
+                o_rows = o_rows_all[args.row_offset:] if args.row_offset > 0 else o_rows_all
+                m_rows = m_rows_all[args.row_offset:] if args.row_offset > 0 else m_rows_all
                 rows = compare_sheets(
-                    sheets_o.get(sh, []),
-                    sheets_m.get(sh, []),
+                    o_rows,
+                    m_rows,
                     source_idx, target_idx,
                     extra_idx,
                     args.row_offset,
@@ -571,9 +601,14 @@ def main():
         if ws_pat is not None:
             all_sheets = {sh for sh in all_sheets if ws_pat.search(sh)}
         for sh in sorted(all_sheets):
+            # Strictly enforce row-offset by slicing before comparison
+            o_rows_all = sheets_o.get(sh, [])
+            m_rows_all = sheets_m.get(sh, [])
+            o_rows = o_rows_all[args.row_offset:] if args.row_offset > 0 else o_rows_all
+            m_rows = m_rows_all[args.row_offset:] if args.row_offset > 0 else m_rows_all
             rows = compare_sheets(
-                sheets_o.get(sh, []),
-                sheets_m.get(sh, []),
+                o_rows,
+                m_rows,
                 source_idx, target_idx,
                 extra_idx,
                 args.row_offset,
@@ -583,7 +618,7 @@ def main():
             )
             results[file_key][sh] = rows
 
-    render_html(results, out_path, args.extra_header if args.extra_column else None)
+    render_html(results, out_path, args.extra_header if args.extra_column else None, row_offset=args.row_offset)
 
 if __name__ == "__main__":
     main()

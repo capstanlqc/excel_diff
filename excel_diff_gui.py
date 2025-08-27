@@ -7,11 +7,9 @@ import sys
 import threading
 import threading
 import tkinter as tk
-
 from pathlib import Path
 from tkinter import ttk
 from tkinter import filedialog, messagebox
-
 def get_base_dir():
     """
     Return the base directory for bundled resources:
@@ -22,17 +20,13 @@ def get_base_dir():
     if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
         return Path(sys._MEIPASS)
     return Path(__file__).resolve().parent
-
 APP_DIR = get_base_dir()
 LOCALES_DIR = APP_DIR / "locales"
 DEFAULT_LOCALE = "en"
-
 EXCEL_DIFF_SCRIPT = str((APP_DIR / "excel_diff.py").resolve())
-
 # Appearance toggles
 GROUP_BORDERS = True          # True: use ttk.Labelframe borders; False: use plain ttk.Frame
 SHOW_GROUP_TITLES = False      # True: show titles; False: hide titles (independent of borders)
-
 # Consistent padding and widths
 GROUP_PAD_Y = 8
 GROUP_INNER_PAD = dict(padx=0, pady=(0, 8))
@@ -44,9 +38,7 @@ SMALL_ENTRY_WIDTH = 10     # unified width for letter and numeric controls
 BUTTON_PADX = 10           # base left padding for buttons
 BUTTON_PAD = (BUTTON_PADX, BUTTON_PADX + 6)  # a bit more on the right for breathing space
 BUTTON_WIDTH = 8          # consistent width across all buttons (in text units)
-
 # ---------- i18n helpers (robust, no deprecated getdefaultlocale) ----------
-
 def _normalize_locale_tag(tag: str) -> str:
     """
     Normalize locale tag to lang[_REGION] with underscores.
@@ -58,8 +50,8 @@ def _normalize_locale_tag(tag: str) -> str:
     if not tag:
         return ""
     s = str(tag)
-    s = s.split(".", 1)[0]     # drop codeset
-    s = s.split("@", 1)[0]     # drop modifier
+    s = s.split(".", 1)[0]
+    s = s.split("@", 1)[0]
     s = s.strip().replace("-", "_")
     if not s:
         return ""
@@ -69,7 +61,6 @@ def _normalize_locale_tag(tag: str) -> str:
     lang = parts[0].lower()
     region = parts[1].upper()
     return f"{lang}_{region}"
-
 def _gather_env_locales():
     """
     Collect candidate locales from env (LC_ALL, LC_MESSAGES, LANG).
@@ -95,7 +86,6 @@ def _gather_env_locales():
                     seen.add(base)
                     out.append(base)
     return out
-
 def detect_locale_chain():
     """
     Preference list without using deprecated APIs:
@@ -105,7 +95,6 @@ def detect_locale_chain():
     """
     prefs = []
     seen = set()
-
     try:
         locale.setlocale(locale.LC_CTYPE, "")
         lang_tuple = locale.getlocale()
@@ -120,17 +109,13 @@ def detect_locale_chain():
                     prefs.append(base)
     except Exception:
         pass
-
     for env_loc in _gather_env_locales():
         if env_loc not in seen:
             seen.add(env_loc)
             prefs.append(env_loc)
-
     if DEFAULT_LOCALE not in seen:
         prefs.append(DEFAULT_LOCALE)
-
     return prefs
-
 def load_labels():
     """
     Load and merge locale files, from base to variant.
@@ -152,14 +137,11 @@ def load_labels():
                 # Catch other potential file reading errors.
                 print(f"Error: Could not read file '{f.name}'. Details: {e}", file=sys.stderr)
     return merged
-
 # Initialize labels and helper BEFORE class definition
 LABELS = load_labels()
 def L(key, default_text):
     return LABELS.get(key, default_text)
-
 # ---------- GUI ----------
-
 if os.name == "nt":
     try:
         # Make process DPI-aware on Windows so fonts and geometry scale correctly
@@ -171,7 +153,6 @@ if os.name == "nt":
             windll.shcore.SetProcessDpiAwareness(1)  # system DPI as fallback
         except Exception:
             pass
-
 class ExcelDiffGUI(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -181,7 +162,6 @@ class ExcelDiffGUI(tk.Tk):
             self.geometry("980x780")
         else:
             self.geometry("940x760")
-
         # Window/app icon (from ./icons/icon.png)
         try:
             icon_path = APP_DIR / "icons" / "icon.png"
@@ -193,15 +173,12 @@ class ExcelDiffGUI(tk.Tk):
         except Exception:
             # Icon is optional; ignore if unsupported or missing
             pass
-
         # Styles for status label: default uses theme color; error uses red
         self.style = ttk.Style(self)
         self.style.configure("StatusDefault.TLabel")  # no explicit foreground -> theme default
         self.style.configure("StatusError.TLabel", foreground="#fc6666")  # red on errors
-
         self.home = Path.home()
         self.start_dirs = {"original": self.home, "modified": self.home, "output": self.home}
-
         # State variables
         self.var_compare_folders = tk.BooleanVar(value=True)
         self.var_original = tk.StringVar(value=str(self.home))
@@ -210,32 +187,24 @@ class ExcelDiffGUI(tk.Tk):
         self.var_row_offset = tk.IntVar(value=0)
         self.var_source_col = tk.StringVar(value="")
         self.var_target_col = tk.StringVar(value="")
-
         self.var_extract_extra = tk.BooleanVar(value=False)
         self.var_extra_col = tk.StringVar(value="")
         self.var_extra_header = tk.StringVar(value="")
-
         self.var_nolimits = tk.BooleanVar(value=False)
         self.var_tolerate = tk.IntVar(value=0)   # 0..35 or 0..100
         self.var_realign = tk.IntVar(value=0)    # 0..15 or very large for "no limit"
-
         self.var_include_identical_pairs = tk.BooleanVar(value=True)
         self.var_output_html = tk.StringVar(value=str(self.home / "diff_report.html"))
-
         # Status bar text (centered)
         self.var_status = tk.StringVar(value="")
-
         self._build_ui()
         self._bind_logic()
         self._toggle_extra()
         self._toggle_limits()
-
         # Resize to fit content precisely (not bigger than needed)
         self.update_idletasks()
         self.geometry("")  # let Tk compute best size
-
     # ---- utilities ----
-
     def _group_frame(self, parent, title=None):
         """
         Creates a group container. Honors two independent toggles:
@@ -254,7 +223,6 @@ class ExcelDiffGUI(tk.Tk):
                 hdr = ttk.Label(frm, text=title, font=("", 10, "bold"))
                 hdr.grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 6))
             return frm
-
     def _first_content_row(self):
         """
         Returns the starting row index for content inside a group frame,
@@ -264,17 +232,13 @@ class ExcelDiffGUI(tk.Tk):
             return 0
         else:
             return 1 if SHOW_GROUP_TITLES else 0
-
     def _right_label(self, parent, text):
         lbl = ttk.Label(parent, text=text, anchor="e", justify="right", width=LABEL_WIDTH)
         return lbl
-
     def _button(self, parent, text, command):
         # Consistent button width and styling
         return ttk.Button(parent, text=text, command=command, width=BUTTON_WIDTH)
-
     # ---- layout ----
-
     def _build_ui(self):
         root = ttk.Frame(self, padding=12)
         root.grid(row=0, column=0, sticky="nsew")
@@ -428,7 +392,6 @@ class ExcelDiffGUI(tk.Tk):
         )
         self.chk_include_identical.grid(row=row4, column=1, sticky="w", **GROUP_INNER_PAD)
         row4 += 1
-
         # Run Diff button directly under the last Browse (column 2), consistent padding and width
         self.btn_run = self._button(grp4, L("run_diff", "Run diff"), self._run_diff)
         self.btn_run.grid(row=row4, column=2, sticky="w", padx=BUTTON_PAD, pady=(0, 0))
@@ -442,14 +405,19 @@ class ExcelDiffGUI(tk.Tk):
     
         # Status bar (centered text) with style reference kept for color changes
         status_lbl = ttk.Label(grp5, textvariable=self.var_status, anchor="center", justify="center", style="StatusDefault.TLabel")
-        status_lbl.grid(row=row5, column=0, columnspan=3, sticky="ew", pady=(8, 8))
+        status_lbl.grid(row=row5, column=0, columnspan=3, sticky="ew", pady=(8, 4))
         self.status_lbl = status_lbl
-        row5 += 1
+    
+        # Progress bar: initially invisible; will be gridded when used
+        self.progress = ttk.Progressbar(grp5, orient="horizontal", mode="indeterminate")
+        # Do NOT grid here; becomes visible only during work
+        # self.progress.grid(row=row5 + 1, column=0, columnspan=3, sticky="ew", pady=(0, 8))
+        self._progress_grid_args = dict(row=row5 + 1, column=0, columnspan=3, sticky="ew", pady=(0, 8))
+        row5 += 2
     
         # Exit under Run diff: place Exit in column 2 with same padding and width
         self.btn_exit = self._button(grp5, L("exit", "Exit"), self.destroy)
         self.btn_exit.grid(row=row5, column=2, sticky="e", padx=BUTTON_PAD, pady=(0, 0))
-
 #        # Debug button for locales
 #        btn_tmp = self._button(grp5, "Diag info", self._diag_locales)
 #        btn_tmp.grid(row=row5, column=0, sticky="w", padx=BUTTON_PAD, pady=(0, 0))
@@ -471,21 +439,17 @@ class ExcelDiffGUI(tk.Tk):
         for b in buttons:
             if b is not None:
                 b.configure(width=final_width)
-
     # ---- interactions ----
-
     def _bind_logic(self):
         self.ent_original.bind("<FocusOut>", lambda e: self._sync_start_dirs())
         self.ent_modified.bind("<FocusOut>", lambda e: self._sync_start_dirs())
         self.ent_output.bind("<FocusOut>", lambda e: self._sync_start_dirs())
-
     def _toggle_extra(self):
         state = "normal" if self.var_extract_extra.get() else "disabled"
         if hasattr(self, "ent_extra_col"):
             self.ent_extra_col.configure(state=state)
         if hasattr(self, "ent_extra_header"):
             self.ent_extra_header.configure(state=state)
-
     def _toggle_limits(self):
         nolim = self.var_nolimits.get()
         # Update spin ranges
@@ -497,9 +461,7 @@ class ExcelDiffGUI(tk.Tk):
             self.spn_realign.configure(to=999999 if nolim else 15)
         except Exception:
             pass
-
     # ----- File/folder choosers with remembered starts -----
-
     def _browse_original(self):
         start = Path(self.var_original.get()).expanduser()
         start_dir = start if start.is_dir() else (start.parent if start.exists() else self.start_dirs["original"])
@@ -519,7 +481,6 @@ class ExcelDiffGUI(tk.Tk):
             self.var_original.set(path)
             self.start_dirs["original"] = Path(path).parent
             self._sync_start_dirs()
-
     def _browse_modified(self):
         cur_mod = Path(self.var_modified.get()).expanduser()
         if not cur_mod.exists() or str(cur_mod) == str(self.home):
@@ -528,7 +489,6 @@ class ExcelDiffGUI(tk.Tk):
         else:
             start_default = cur_mod if cur_mod.is_dir() else cur_mod.parent
         start_dir = start_default if start_default.exists() else self.home
-
         if self.var_compare_folders.get():
             path = filedialog.askdirectory(initialdir=str(start_dir), title=L("choose_modified_dir", "Choose modified folder"))
             if not path: return
@@ -543,7 +503,6 @@ class ExcelDiffGUI(tk.Tk):
             if not path: return
             self.var_modified.set(path)
             self.start_dirs["modified"] = Path(path).parent
-
     def _browse_output(self):
         start = Path(self.var_output_html.get()).expanduser()
         start_dir = start.parent if start else self.start_dirs["output"]
@@ -557,7 +516,6 @@ class ExcelDiffGUI(tk.Tk):
         if not path: return
         self.var_output_html.set(path)
         self.start_dirs["output"] = Path(path).parent
-
     def _sync_start_dirs(self):
         orig = Path(self.var_original.get()).expanduser()
         mod = Path(self.var_modified.get()).expanduser()
@@ -570,22 +528,35 @@ class ExcelDiffGUI(tk.Tk):
             self.start_dirs["modified"] = mod if mod.is_dir() else mod.parent
         if outp:
             self.start_dirs["output"] = outp.parent
-
+    # ---- progress helpers ----
+    def _progress_start(self):
+        try:
+            # Make the bar visible on demand
+            if not self.progress.winfo_ismapped():
+                self.progress.grid(**self._progress_grid_args)
+            self.progress.start(30)
+        except Exception:
+            pass
+    def _progress_stop(self):
+        try:
+            self.progress.stop()
+            # Hide it completely after work finishes
+            if self.progress.winfo_ismapped():
+                self.progress.grid_remove()
+        except Exception:
+            pass
     # ---- validation/run ----
-
     def _validate(self):
         compare_dirs = self.var_compare_folders.get()
         orig = Path(self.var_original.get()).expanduser()
         mod = Path(self.var_modified.get()).expanduser()
         out_html = Path(self.var_output_html.get()).expanduser()
-
         if not self.var_original.get().strip():
             self.var_original.set(str(self.home))
             orig = self.home
         if not self.var_modified.get().strip():
             self.var_modified.set(str(self.home))
             mod = self.home
-
         if compare_dirs:
             if not orig.exists() or not orig.is_dir():
                 self._set_status(L("err_orig_dir", "Please select an existing folder for 'Original'."), error=True)
@@ -600,13 +571,11 @@ class ExcelDiffGUI(tk.Tk):
             if not mod.exists() or not mod.is_file():
                 self._set_status(L("err_mod_file", "Please select an existing file for 'Modified'."), error=True)
                 return None
-
         source = self.var_source_col.get().strip()
         target = self.var_target_col.get().strip()
         if not source or not target:
             self._set_status(L("err_cols", "Please enter letters for both the source and target columns."), error=True)
             return None
-
         extra_args = []
         if self.var_extract_extra.get():
             extra_col = self.var_extra_col.get().strip()
@@ -617,28 +586,23 @@ class ExcelDiffGUI(tk.Tk):
             header = self.var_extra_header.get().strip()
             if header:
                 extra_args.extend(["--extra_header", header])
-
         if not out_html.parent.exists():
             try:
                 out_html.parent.mkdir(parents=True, exist_ok=True)
             except Exception:
                 self._set_status(L("err_output_dir", "Could not create the output folder. Please check the path and permissions."), error=True)
                 return None
-
         args = [sys.executable, EXCEL_DIFF_SCRIPT,
                 "--original", str(orig),
                 "--modified", str(mod),
                 "--output", str(out_html),
                 "--source", source,
                 "--target", target]
-
         if compare_dirs:
             args.append("--dir")
-
         wsp = self.var_wspattern.get().strip()
         if wsp:
             args.extend(["--wspattern", wsp])
-
         # Header row offset
         try:
             off = int(self.var_row_offset.get())
@@ -646,12 +610,10 @@ class ExcelDiffGUI(tk.Tk):
             off = 0
         if off > 0:
             args.extend(["--row-offset", str(off)])
-
         # Limits and counters
         nolim = self.var_nolimits.get()
         if nolim:
             args.append("--nocap")
-
         try:
             tol = max(0, int(self.var_tolerate.get()))
         except Exception:
@@ -660,17 +622,14 @@ class ExcelDiffGUI(tk.Tk):
             rea = max(0, int(self.var_realign.get()))
         except Exception:
             rea = 0
-
         if tol > 0:
             args.extend(["--tolerate", str(tol)])
         if rea > 0:
             args.extend(["--realign", str(rea)])
-
         args.extend(extra_args)
         if not self.var_include_identical_pairs.get():
             args.append("--omit_identical")
         return args, out_html
-
     def _run_diff(self):
         self._set_status("")  # clear
         data = self._validate()
@@ -679,8 +638,6 @@ class ExcelDiffGUI(tk.Tk):
         args, out_html = data
     
         # Build CLI args for excel_diff.py (strip the interpreter/script)
-        # Current args are like: [sys.executable, EXCEL_DIFF_SCRIPT, --flag, value, ...]
-        # Keep only flags for argparse in excel_diff.main()
         cli_args = args[:]
         try:
             first_flag_idx = next(
@@ -690,6 +647,9 @@ class ExcelDiffGUI(tk.Tk):
             script_argv = cli_args[first_flag_idx:]
         except StopIteration:
             script_argv = []
+    
+        # Start the progress animation (show + animate)
+        self._progress_start()
     
         try:
             if getattr(sys, "frozen", False):
@@ -716,22 +676,31 @@ class ExcelDiffGUI(tk.Tk):
                     self.after(0, lambda: self._after_diff(ok, out_html))
                 threading.Thread(target=worker, daemon=True).start()
             else:
-                # Source/dev run: use the system Python interpreter to invoke the helper script
-                completed = subprocess.run(args, check=False)
-                ok = (completed.returncode == 0)
-                self._after_diff(ok, out_html)
+                # Source/dev run: run in a background thread to keep UI responsive
+                def worker():
+                    try:
+                        completed = subprocess.run(args, check=False)
+                        ok = (completed.returncode == 0)
+                    except Exception:
+                        ok = False
+                    self.after(0, lambda: self._after_diff(ok, out_html))
+                threading.Thread(target=worker, daemon=True).start()
         except Exception:
+            # Stop and hide bar on failure to start
+            self._progress_stop()
             self._set_status(L("err_run", "An unexpected error occurred while running the comparison."), error=True)
             return
     
     def _after_diff(self, ok, out_html):
+        # Stop animation and hide the bar
+        self._progress_stop()
+    
         if not ok:
             self._set_status(L("err_run_rc", "The comparison process did not complete successfully."), error=True)
             return
         self._set_status(L("done_status", "Comparison finished successfully."), error=False)
         if messagebox.askyesno(L("done_title", "Done"), L("open_now", "The report has been generated. Open it now?")):
             self._open_file(out_html)
-
     def _set_status(self, text, error=False):
         self.var_status.set(text)
         # switch label style to show red on errors, default otherwise
@@ -740,7 +709,6 @@ class ExcelDiffGUI(tk.Tk):
         except Exception:
             # Fallback direct color if theme ignores styles
             self.status_lbl.configure(foreground="#b00000" if error else "")
-
     def _open_file(self, path: Path):
         try:
             if sys.platform.startswith("darwin"):
@@ -751,7 +719,6 @@ class ExcelDiffGUI(tk.Tk):
                 subprocess.run(["xdg-open", str(path)])
         except Exception:
             messagebox.showinfo(L("open_fail_title", "Info"), L("open_fail", "Could not open the report automatically."))
-
 #    def _diag_locales(self):
 #        try:
 #            msgs = []
@@ -777,10 +744,8 @@ class ExcelDiffGUI(tk.Tk):
 #            self._set_status("\n".join(msgs), error=False)
 #        except Exception as e:
 #            self._set_status(f"Locales diag error: {e}", error=True)
-
 def main():
     app = ExcelDiffGUI()
     app.mainloop()
-
 if __name__ == "__main__":
     main()
